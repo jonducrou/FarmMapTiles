@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body, #map {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Farm orthomosaic bounds (from tilemapresource.xml)
+        const bounds = [
+            [-28.69844130832623, 151.93226175970278],  // SW corner
+            [-28.69653647808598, 151.93537147294637]   // NE corner
+        ];
+        const center = [-28.69749, 151.93382];
+
+        // Initialise map
+        const map = L.map('map').setView(center, 18);
+
+        // OpenStreetMap base layer
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        // Satellite base layer (Esri)
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Esri'
+        });
+
+        // Farm orthomosaic overlay (TMS format - Y axis inverted)
+        const farmTiles = L.tileLayer('tiles/{z}/{x}/{y}.png', {
+            minZoom: 15,
+            maxZoom: 22,
+            tms: true,
+            bounds: bounds,
+            attribution: 'Farm Orthomosaic (ODM)'
+        });
+
+        // Add layers
+        satellite.addTo(map);
+        farmTiles.addTo(map);
+
+        // Layer control
+        L.control.layers(
+            { 'Satellite': satellite, 'OpenStreetMap': osm },
+            { 'Farm Orthomosaic': farmTiles }
+        ).addTo(map);
+
+        // Fit to orthomosaic bounds
+        map.fitBounds(bounds);
+    </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# ODM intermediate files (large, not needed for hosting)
+code/
+
+# macOS
+.DS_Store
