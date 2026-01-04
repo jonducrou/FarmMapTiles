@@ -3,13 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Farm Map</title>
+    <title>Farm Map - Timelapse</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body, #map {
             height: 100%;
             margin: 0;
             padding: 0;
+        }
+        .date-control {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .date-control h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        .date-slider {
+            width: 200px;
+            margin: 5px 0;
+        }
+        .date-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a73e8;
+            text-align: center;
+            margin-top: 5px;
+        }
+        .date-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .date-nav button {
+            padding: 4px 12px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: #f8f8f8;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .date-nav button:hover {
+            background: #e8e8e8;
+        }
+        .date-nav button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -39,27 +82,139 @@
             attribution: 'Esri'
         });
 
-        // Farm orthomosaic overlay (TMS format - Y axis inverted)
-        const farmTiles = L.tileLayer('tiles/{z}/{x}/{y}.png', {
-            minZoom: 15,
-            maxZoom: 22,
-            tms: true,
-            bounds: bounds,
-            attribution: 'Farm Orthomosaic (ODM)'
+        // Add base layer
+        satellite.addTo(map);
+
+        // Available dates (loaded from manifest or hardcoded fallback)
+        let availableDates = [];
+        let currentDateIndex = 0;
+        let currentTileLayer = null;
+
+        // Date slider control
+        const DateControl = L.Control.extend({
+            options: { position: 'topright' },
+
+            onAdd: function(map) {
+                const container = L.DomUtil.create('div', 'date-control');
+                container.innerHTML = `
+                    <h4>Timelapse Date</h4>
+                    <input type="range" class="date-slider" id="dateSlider" min="0" max="0" value="0">
+                    <div class="date-label" id="dateLabel">Loading...</div>
+                    <div class="date-nav">
+                        <button id="prevDate">&larr; Prev</button>
+                        <button id="nextDate">Next &rarr;</button>
+                    </div>
+                `;
+
+                // Prevent map interaction when using control
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.disableScrollPropagation(container);
+
+                return container;
+            }
         });
 
-        // Add layers
-        satellite.addTo(map);
-        farmTiles.addTo(map);
+        // Create tile layer for a specific date
+        function createDateTileLayer(date) {
+            return L.tileLayer(`tiles/${date}/{z}/{x}/{y}.webp`, {
+                minZoom: 15,
+                maxZoom: 22,
+                tms: true,
+                bounds: bounds,
+                attribution: `Farm Orthomosaic - ${date}`
+            });
+        }
+
+        // Switch to a specific date
+        function switchToDate(index) {
+            if (index < 0 || index >= availableDates.length) return;
+
+            currentDateIndex = index;
+            const date = availableDates[index];
+
+            // Remove current layer
+            if (currentTileLayer) {
+                map.removeLayer(currentTileLayer);
+            }
+
+            // Add new layer
+            currentTileLayer = createDateTileLayer(date);
+            currentTileLayer.addTo(map);
+
+            // Update UI
+            document.getElementById('dateSlider').value = index;
+            document.getElementById('dateLabel').textContent = date;
+            document.getElementById('prevDate').disabled = index === 0;
+            document.getElementById('nextDate').disabled = index === availableDates.length - 1;
+        }
+
+        // Initialise date control
+        async function initDateControl() {
+            // Add control to map
+            new DateControl().addTo(map);
+
+            // Try to load manifest
+            try {
+                const response = await fetch('viewer_manifest.json');
+                if (response.ok) {
+                    const manifest = await response.json();
+                    availableDates = manifest.dates.map(d => d.date);
+                }
+            } catch (e) {
+                console.log('No manifest found, checking for static tiles');
+            }
+
+            // Fallback: check for original tiles directory
+            if (availableDates.length === 0) {
+                // Use the original static tiles as fallback
+                availableDates = ['static'];
+            }
+
+            // Configure slider
+            const slider = document.getElementById('dateSlider');
+            slider.max = availableDates.length - 1;
+            slider.addEventListener('input', (e) => {
+                switchToDate(parseInt(e.target.value));
+            });
+
+            // Configure nav buttons
+            document.getElementById('prevDate').addEventListener('click', () => {
+                switchToDate(currentDateIndex - 1);
+            });
+            document.getElementById('nextDate').addEventListener('click', () => {
+                switchToDate(currentDateIndex + 1);
+            });
+
+            // Load initial date (most recent)
+            if (availableDates[0] === 'static') {
+                // Use original tiles path
+                currentTileLayer = L.tileLayer('tiles/{z}/{x}/{y}.png', {
+                    minZoom: 15,
+                    maxZoom: 22,
+                    tms: true,
+                    bounds: bounds,
+                    attribution: 'Farm Orthomosaic (ODM)'
+                });
+                currentTileLayer.addTo(map);
+                document.getElementById('dateLabel').textContent = 'Current';
+                document.getElementById('prevDate').style.display = 'none';
+                document.getElementById('nextDate').style.display = 'none';
+                document.getElementById('dateSlider').style.display = 'none';
+            } else {
+                switchToDate(availableDates.length - 1);  // Start with most recent
+            }
+        }
 
         // Layer control
         L.control.layers(
-            { 'Satellite': satellite, 'OpenStreetMap': osm },
-            { 'Farm Orthomosaic': farmTiles }
+            { 'Satellite': satellite, 'OpenStreetMap': osm }
         ).addTo(map);
 
         // Fit to orthomosaic bounds
         map.fitBounds(bounds);
+
+        // Initialise date control
+        initDateControl();
     </script>
 </body>
 </html>

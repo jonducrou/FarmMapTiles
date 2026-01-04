@@ -1,0 +1,10 @@
+{
+  "dates": [
+    {"date": "2023-02-18", "description": "February 2023 survey"},
+    {"date": "2023-09-16", "description": "September 2023 survey"},
+    {"date": "2023-11-11", "description": "November 2023 survey"},
+    {"date": "2024-10-26", "description": "October 2024 survey"},
+    {"date": "2025-04-17", "description": "April 2025 survey"}
+  ],
+  "defaultDate": "2025-04-17"
+}
