@@ -4,7 +4,8 @@
     {"date": "2023-09-16", "description": "September 2023 survey"},
     {"date": "2023-11-11", "description": "November 2023 survey"},
     {"date": "2024-10-26", "description": "October 2024 survey"},
-    {"date": "2025-04-17", "description": "April 2025 survey"}
+    {"date": "2025-04-17", "description": "April 2025 survey"},
+    {"date": "2026-04-03", "description": "April 2026 survey (high-res 2.5cm)"}
   ],
-  "defaultDate": "2025-04-17"
+  "defaultDate": "2026-04-03"
 }
