@@ -31,3 +31,43 @@
 **Root Cause:** All 21 extracted frames had identical GPS coordinates (-28°41'50.28"S, 151°56'4.20"E). The drone was hovering in place, not flying a mapping pattern.
 
 **Decision:** Exclude this date from the timelapse - the source data is unsuitable for orthomosaic generation.
+
+
+## 2026-04-05: pc-quality ultra Requires Too Much Disk
+
+**Problem:** `--pc-quality ultra` with 1,123 frames consumed >146GB of intermediate files, crashing OrbStack with I/O errors on a 460GB disk.
+
+**Options Considered:**
+1. `--pc-quality ultra` — best quality but >150GB disk per date
+2. `--pc-quality high` — good quality, ~76GB disk per date
+3. `--pc-quality medium` — fast but lower quality
+
+**Decision:** Use `--pc-quality high` with `--mesh-octree-depth 12` and `--orthophoto-cutline`.
+
+**Rationale:**
+- `high` produced excellent results at 2.5cm/pixel from 50m altitude
+- Adding `--mesh-octree-depth 12` fixed a rectangular gap that appeared with default mesh settings
+- `ultra` is impractical without >200GB free disk per date
+- The cutline option has a known fiona bug (MultiPolygon != Polygon) — pipeline falls back gracefully
+
+
+## 2026-04-05: ODM Cutline MultiPolygon Bug
+
+**Problem:** `--orthophoto-cutline` crashes with `fiona.errors.GeometryTypeValidationError: 'MultiPolygon' != 'Polygon'` on some datasets.
+
+**Root Cause:** Bug in ODM's cutline.py — it writes a MultiPolygon to a schema expecting Polygon.
+
+**Decision:** Pipeline tries cutline first, then checks if the orthomosaic TIF was generated despite the crash. If so, proceeds without cutline. The orthomosaic is generated before the cutline step, so the output is usable.
+
+
+## 2026-04-05: External Drive for ODM Work
+
+**Problem:** ODM intermediate files (opensfm, depth maps, point clouds) consume 76–150GB per date. Processing multiple dates fills the boot disk.
+
+**Decision:** Pipeline accepts a work directory argument, intended for an external drive. All intermediates stay on the external drive; only final WebP tiles (~18MB per date) are copied to the repo.
+
+**Rationale:**
+- Boot disk has 460GB total, shared with OS and other projects
+- External drive can be dedicated to ODM processing
+- Intermediates are cleaned after successful tile deployment
+- State files allow resuming after interruption
