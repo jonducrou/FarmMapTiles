@@ -1,5 +1,19 @@
 # ODM intermediate files (large, not needed for hosting)
 code/
 
+# Source videos and scan artefacts (kept out of the tile repo)
+drone videos/
+videos/
+*.mp4
+*.MP4
+local_manifest.json
+pcloud_manifest.json
+pcloud_scan.json
+process_manifest.json
+scan_progress.json
+SCAN_RESULTS.md
+filenames.txt
+
 # macOS
 .DS_Store
+scripts/__pycache__/
